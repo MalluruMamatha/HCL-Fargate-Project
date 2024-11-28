@@ -95,25 +95,25 @@ resource "aws_lb_target_group" "ecs_target_group" {
   target_type = "ip"
 }
 
-resource "aws_ecs_service" "ecs_service" {
-  name            = "patient-service"
-  cluster         = aws_ecs_cluster.ecs_cluster.id
-  task_definition = aws_ecs_task_definition.patient_service_task.arn
-  desired_count   = 1
+# resource "aws_ecs_service" "ecs_service" {
+#   name            = "patient-service"
+#   cluster         = aws_ecs_cluster.ecs_cluster.id
+#   task_definition = aws_ecs_task_definition.patient_service_task.arn
+#   desired_count   = 1
 
-  launch_type = "FARGATE"
+#   launch_type = "FARGATE"
 
-  network_configuration {
-    subnets         = module.vpc.private_subnets
-    security_groups = [aws_security_group.ecs_service_sg.id]
-  }
+#   network_configuration {
+#     subnets         = module.vpc.private_subnets
+#     security_groups = [aws_security_group.ecs_service_sg.id]
+#   }
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.ecs_target_group.arn
-    container_name   = "patient-service"
-    container_port   = 3000
-  }
-}
+#   load_balancer {
+#     target_group_arn = aws_lb_target_group.ecs_target_group.arn
+#     container_name   = "patient-service"
+#     container_port   = 3000
+#   }
+# }
 
 resource "aws_ecs_task_definition" "patient_service_task" {
   family                   = "patient-service-task"
