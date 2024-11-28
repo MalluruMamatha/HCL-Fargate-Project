@@ -1,0 +1,46 @@
+# .github/workflows/deploy.yml
+name: Deploy to Fargate
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.6
+
+      - name: Initialize Terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate with AWS ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ECR_REPOSITORY_URL>
+
+      - name: Build Docker image
+        run: docker build -t patient-service .
+
+      - name: Push Docker image to ECR
+        run: |
+          docker tag patient-service:latest <ECR_REPOSITORY_URL>/patient-service:latest
+          docker push <ECR_REPOSITORY_URL>/patient-service:latest
