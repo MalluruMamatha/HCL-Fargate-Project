@@ -250,7 +250,7 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
   repository = aws_ecr_repository.appointment_service_repo.name
 
   policy = jsonencode({
-    Version = "2012-10-17",  # Correct version
+    Version = "2012-10-17",  
     Statement = [
       {
         Effect    = "Allow",
@@ -267,3 +267,4 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
     ]
   })
 }
+
