@@ -250,7 +250,7 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
   repository = aws_ecr_repository.appointment_service_repo.name
 
   policy = jsonencode({
-    Version = "2012-10-17",  
+    Version = "2012-10-17",
     Statement = [
       {
         Effect    = "Allow",
@@ -262,9 +262,10 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
           "ecr:BatchGetImage",
           "ecr:BatchGetLayer"
         ],
-        Resource = "${aws_ecr_repository.appointment_service_repo.arn}"
+        Resource = "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/${aws_ecr_repository.appointment_service_repo.name}"
       }
     ]
   })
 }
+
 
