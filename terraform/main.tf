@@ -5,6 +5,14 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
 }
 
+# Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+  tags = {
+    Name = "main-igw"
+  }
+}
+
 # Subnet Configuration
 resource "aws_subnet" "public_subnet_a" {
   vpc_id     = aws_vpc.main.id
