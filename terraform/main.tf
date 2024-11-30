@@ -28,6 +28,27 @@ resource "aws_subnet" "public_subnet_b" {
   map_public_ip_on_launch = true
 }
 
+# Route Table for Public Subnets
+resource "aws_route_table" "public_route_table" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+}
+
+# Route Table Association
+resource "aws_route_table_association" "subnet_a_association" {
+  subnet_id      = aws_subnet.public_subnet_a.id
+  route_table_id = aws_route_table.public_route_table.id
+}
+
+resource "aws_route_table_association" "subnet_b_association" {
+  subnet_id      = aws_subnet.public_subnet_b.id
+  route_table_id = aws_route_table.public_route_table.id
+}
+
 # Security Group for ALB
 resource "aws_security_group" "alb_security_group" {
   name        = "alb-sg"
@@ -129,7 +150,7 @@ resource "aws_ecr_repository" "appointment_service_repo" {
   name = "appointment-service-repo"
 }
 
-# IAM Role for ECS Task Execution (Create this missing IAM role)
+# IAM Role for ECS Task Execution
 resource "aws_iam_role" "ecs_execution_role" {
   name = "ecs-execution-role"
 
@@ -153,10 +174,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_execution_role.name
 }
 
-
-
-
-# IAM Role for ECS Task (Create this missing IAM role)
+# IAM Role for ECS Task
 resource "aws_iam_role" "ecs_task_role" {
   name = "ecs-task-role"
 
@@ -175,27 +193,6 @@ resource "aws_iam_role" "ecs_task_role" {
   })
 }
 
-resource "aws_security_group" "ecs_task_security_group" {
-  name        = "ecs-task-sg"
-  description = "Allow ECS tasks to communicate with ECR"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-
 # ECS Task Definition with ECR Image
 resource "aws_ecs_task_definition" "appointment_task" {
   family                   = "appointment-task"
@@ -208,7 +205,7 @@ resource "aws_ecs_task_definition" "appointment_task" {
 
   container_definitions = jsonencode([{
     name      = "appointment-service"
-    image     = "${aws_ecr_repository.appointment_service_repo.repository_url}:latest" # Use the ECR image URL
+    image     = "${aws_ecr_repository.appointment_service_repo.repository_url}:latest"
     essential = true
     portMappings = [
       {
@@ -247,4 +244,27 @@ resource "aws_ecs_service" "appointment_service" {
   depends_on = [
     aws_lb_listener.app_listener
   ]
+}
+
+# ECR Repository Policy to allow ECS tasks to pull images
+resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
+  repository_name = aws_ecr_repository.appointment_service_repo.name
+
+  policy = jsonencode({
+    Version = "2012-10-17",  # Correct version
+    Statement = [
+      {
+        Effect    = "Allow",
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        },
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchGetImage",
+          "ecr:BatchGetLayer"
+        ],
+        Resource = "${aws_ecr_repository.appointment_service_repo.arn}"
+      }
+    ]
+  })
 }
