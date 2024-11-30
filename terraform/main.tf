@@ -253,6 +253,9 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 
+
+
+# ECR Repository Policy
 resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
   repository = aws_ecr_repository.appointment_service_repo.name
 
@@ -274,6 +277,4 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
     ]
   })
 }
-
-
 
