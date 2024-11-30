@@ -246,9 +246,8 @@ resource "aws_ecs_service" "appointment_service" {
   ]
 }
 
-# ECR Repository Policy to allow ECS tasks to pull images
 resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
-  repository_name = aws_ecr_repository.appointment_service_repo.name
+  repository = aws_ecr_repository.appointment_service_repo.name
 
   policy = jsonencode({
     Version = "2012-10-17",  # Correct version
