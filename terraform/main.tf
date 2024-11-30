@@ -116,7 +116,12 @@ resource "aws_ecs_cluster" "appointment_cluster" {
   name = "appointment-cluster"
 }
 
-# ECS Task Definition
+# ECR Repository
+resource "aws_ecr_repository" "appointment_service_repo" {
+  name = "appointment-service-repo"
+}
+
+# ECS Task Definition with ECR Image
 resource "aws_ecs_task_definition" "appointment_task" {
   family                   = "appointment-task"
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
@@ -128,7 +133,7 @@ resource "aws_ecs_task_definition" "appointment_task" {
 
   container_definitions = jsonencode([{
     name      = "appointment-service"
-    image     = "${aws_ecr_repository.appointment_service_repo.repository_url}:latest" # Replace with your ECR image URL
+    image     = "${aws_ecr_repository.appointment_service_repo.repository_url}:latest" # Use the ECR image URL
     essential = true
     portMappings = [
       {
@@ -139,6 +144,7 @@ resource "aws_ecs_task_definition" "appointment_task" {
     ]
   }])
 }
+
 
 # IAM Role for ECS Task Execution
 resource "aws_iam_role" "ecs_execution_role" {
