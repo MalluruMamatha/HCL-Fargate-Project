@@ -246,6 +246,13 @@ resource "aws_ecs_service" "appointment_service" {
   ]
 }
 
+# Data source for the current AWS region
+data "aws_region" "current" {}
+
+# Data source for the current AWS account ID
+data "aws_caller_identity" "current" {}
+
+
 resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
   repository = aws_ecr_repository.appointment_service_repo.name
 
