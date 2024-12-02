@@ -49,6 +49,12 @@ resource "aws_ecr_repository" "appointment_service" {
   force_delete = true
 }
 
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "ecs_log_group" {
+  name              = "/ecs/appointment-service"
+  retention_in_days = 7
+}
+
 # Security Groups
 resource "aws_security_group" "ecs_service_sg" {
   name   = "ecs-service-sg"
@@ -106,19 +112,16 @@ resource "aws_lb_target_group" "app_tg" {
   port         = 80
   protocol     = "HTTP"
   vpc_id       = module.vpc.vpc_id
-  target_type  = "ip" # Set target type to 'ip' for Fargate compatibility
-
+  target_type  = "ip"
   health_check {
-    interval            = 30
-    path                = "/health"
-    port                = 80
-    protocol            = "HTTP"
-    timeout             = 5
+    interval = 30
+    path     = "/health"
+    port     = 80
+    protocol = "HTTP"
+    timeout  = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
   }
-
-  
 }
 
 resource "aws_lb_listener" "app_listener" {
@@ -130,12 +133,11 @@ resource "aws_lb_listener" "app_listener" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app_tg.arn
   }
-
-  depends_on = [aws_lb_target_group.app_tg]
 }
 
-# ECS Service and Task Definitions
+# ECS Task Definition
 resource "aws_ecs_task_definition" "app_task" {
+  depends_on               = [aws_cloudwatch_log_group.ecs_log_group]
   family                   = "appointment-service-task"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   requires_compatibilities = ["FARGATE"]
@@ -161,6 +163,7 @@ resource "aws_ecs_task_definition" "app_task" {
   }])
 }
 
+# ECS Service
 resource "aws_ecs_service" "app_service" {
   name            = "appointment-service"
   cluster         = aws_ecs_cluster.ecs_cluster.arn
@@ -178,6 +181,4 @@ resource "aws_ecs_service" "app_service" {
     container_name   = "appointment-service"
     container_port   = 3001
   }
-
-  depends_on = [aws_lb_listener.app_listener]
 }
