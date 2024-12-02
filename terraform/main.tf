@@ -263,6 +263,7 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
     Version = "2012-10-17",
     Statement = [
       {
+        Sid       = "AllowECSPull",
         Effect    = "Allow",
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
@@ -273,9 +274,8 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
           "ecr:BatchGetImage",
           "ecr:GetDownloadUrlForLayer"
         ],
-        Resource = aws_ecr_repository.appointment_service_repo.arn
+        Resource = "${aws_ecr_repository.appointment_service_repo.arn}"
       }
     ]
   })
 }
-
