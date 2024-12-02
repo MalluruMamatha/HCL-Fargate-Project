@@ -58,8 +58,8 @@ resource "aws_security_group_rule" "ecs_allow_alb" {
   from_port                = 3001
   to_port                  = 3001
   protocol                 = "tcp"
-  security_group_id        = aws_security_group.ecs_security_group.id
-  source_security_group_id = aws_security_group.alb_security_group.id
+  security_group_id        = aws_security_group.ecs_service_sg.id
+  source_security_group_id = aws_security_group.alb_service_sg.id
 }
 
 # Security Groups
@@ -91,7 +91,7 @@ resource "aws_lb" "app_lb" {
   name               = "appointment-service-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.ecs_service_sg.id]
+  security_groups    = [aws_security_group.alb_service_sg.id]
   subnets            = module.vpc.public_subnets
 }
 
