@@ -71,7 +71,6 @@ resource "aws_security_group" "ecs_service_sg" {
   }
 }
 
-
 resource "aws_security_group" "alb_service_sg" {
   name   = "alb-service-sg"
   vpc_id = module.vpc.vpc_id
@@ -103,11 +102,20 @@ resource "aws_lb" "app_lb" {
 }
 
 resource "aws_lb_target_group" "app_tg" {
-  name     = "appointment-service-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
+  name         = "appointment-service-tg"
+  port         = 80
+  protocol     = "HTTP"
+  vpc_id       = module.vpc.vpc_id
   target_type  = "ip" # Set target type to 'ip' for Fargate compatibility
+  health_check {
+    interval = 30
+    path     = "/health"
+    port     = 80
+    protocol = "HTTP"
+    timeout  = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
 }
 
 resource "aws_lb_listener" "app_listener" {
@@ -130,26 +138,22 @@ resource "aws_ecs_task_definition" "app_task" {
   memory                   = "512"
   cpu                      = "256"
 
-  container_definitions = jsonencode([
-    {
-      name      = "appointment-service"
-      image     = "047719616549.dkr.ecr.us-east-1.amazonaws.com/appointment-service-repo:latest"
-      portMappings = [
-        {
-          containerPort = 3001
-          protocol      = "tcp"
-        }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = "/ecs/appointment-service"
-          "awslogs-region"        = "us-east-1"
-          "awslogs-stream-prefix" = "ecs"
-        }
+  container_definitions = jsonencode([{
+    name      = "appointment-service"
+    image     = "047719616549.dkr.ecr.us-east-1.amazonaws.com/appointment-service-repo:latest"
+    portMappings = [{
+      containerPort = 3001
+      protocol      = "tcp"
+    }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = "/ecs/appointment-service"
+        "awslogs-region"        = "us-east-1"
+        "awslogs-stream-prefix" = "ecs"
       }
     }
-  ])
+  }])
 }
 
 resource "aws_ecs_service" "app_service" {
