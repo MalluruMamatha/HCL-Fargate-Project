@@ -269,10 +269,11 @@ resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
         },
         Action = [
           "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
           "ecr:BatchGetImage",
-          "ecr:BatchGetLayer"
+          "ecr:GetDownloadUrlForLayer"
         ],
-        Resource = "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/${aws_ecr_repository.appointment_service_repo.name}"
+        Resource = aws_ecr_repository.appointment_service_repo.arn
       }
     ]
   })
