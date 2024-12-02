@@ -327,35 +327,35 @@ resource "aws_ecs_service" "appointment_service" {
   }
 }
 
-# Data source for the current AWS region
-data "aws_region" "current" {}
+# # Data source for the current AWS region
+# data "aws_region" "current" {}
 
-# Data source for the current AWS account ID
-data "aws_caller_identity" "current" {}
+# # Data source for the current AWS account ID
+# data "aws_caller_identity" "current" {}
 
-# ECR Repository Policy
-resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
-  repository = aws_ecr_repository.appointment_service_repo.name
+# # ECR Repository Policy
+# resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
+#   repository = aws_ecr_repository.appointment_service_repo.name
 
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Sid       = "AllowECSPull",
-        Effect    = "Allow",
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        },
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:BatchGetImage",
-          "ecr:GetDownloadUrlForLayer"
-        ],
-        Resource = "${aws_ecr_repository.appointment_service_repo.arn}"
-      }
-    ]
-  })
+#   policy = jsonencode({
+#     Version = "2012-10-17",
+#     Statement = [
+#       {
+#         Sid       = "AllowECSPull",
+#         Effect    = "Allow",
+#         Principal = {
+#           Service = "ecs-tasks.amazonaws.com"
+#         },
+#         Action = [
+#           "ecr:GetAuthorizationToken",
+#           "ecr:BatchCheckLayerAvailability",
+#           "ecr:BatchGetImage",
+#           "ecr:GetDownloadUrlForLayer"
+#         ],
+#         Resource = "${aws_ecr_repository.appointment_service_repo.arn}"
+#       }
+#     ]
+#   })
 
   
-}
+# }
