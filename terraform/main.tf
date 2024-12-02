@@ -281,7 +281,7 @@ resource "aws_ecs_task_definition" "appointment_task" {
       logDriver = "awslogs"
       options = {
         awslogs-group         = "/ecs/appointment-service"
-        awslogs-region        = data.aws_region.current.name
+        # awslogs-region        = data.aws_region.current.name
         awslogs-stream-prefix = "ecs"
       }
     }
