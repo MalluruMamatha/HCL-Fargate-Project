@@ -6,8 +6,6 @@ provider "aws" {
 # VPC
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 4.0"
-
   name = "appointment-service-vpc"
   cidr = "10.0.0.0/16"
 
@@ -59,19 +57,25 @@ resource "aws_security_group" "ecs_service_sg" {
 
   ingress = [
     {
+      description = "Allow ALB to ECS"
       from_port   = 3001
       to_port     = 3001
       protocol    = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
     }
   ]
 
   egress = [
     {
+      description = "Allow all outbound"
       from_port   = 0
       to_port     = 0
       protocol    = "-1"
       cidr_blocks = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
     }
   ]
 }
@@ -82,19 +86,25 @@ resource "aws_security_group" "alb_service_sg" {
 
   ingress = [
     {
+      description = "Allow HTTP traffic"
       from_port   = 80
       to_port     = 80
       protocol    = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
     }
   ]
 
   egress = [
     {
+      description = "Allow all outbound"
       from_port   = 0
       to_port     = 0
       protocol    = "-1"
       cidr_blocks = ["0.0.0.0/0"]
+      ipv6_cidr_blocks = []
+      prefix_list_ids = []
     }
   ]
 }
