@@ -133,7 +133,7 @@ resource "aws_ecs_task_definition" "app_task" {
   container_definitions = jsonencode([
     {
       name      = "appointment-service"
-      image     = "${aws_ecr_repository.appointment_service.repository_url}:latest"
+      image     = "047719616549.dkr.ecr.us-east-1.amazonaws.com/appointment-service-repo:latest"
       portMappings = [
         {
           containerPort = 3001
