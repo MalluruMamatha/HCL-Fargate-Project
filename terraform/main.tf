@@ -6,15 +6,14 @@ provider "aws" {
 # VPC
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  name = "appointment-service-vpc"
-  cidr = "10.0.0.0/16"
+  name    = "appointment-service-vpc"
+  cidr    = "10.0.0.0/16"
 
   azs             = ["us-east-1a", "us-east-1b"]
   public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
   private_subnets = ["10.0.3.0/24", "10.0.4.0/24"]
 
   enable_nat_gateway = true
-  single_nat_gateway = true
 }
 
 # IAM Roles for ECS
@@ -57,25 +56,29 @@ resource "aws_security_group" "ecs_service_sg" {
 
   ingress = [
     {
-      description = "Allow ALB to ECS"
-      from_port   = 3001
-      to_port     = 3001
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
+      description      = "Allow ALB to ECS"
+      from_port        = 3001
+      to_port          = 3001
+      protocol         = "tcp"
+      cidr_blocks      = ["0.0.0.0/0"]
       ipv6_cidr_blocks = []
-      prefix_list_ids = []
+      prefix_list_ids  = []
+      self             = false
+      security_groups  = []
     }
   ]
 
   egress = [
     {
-      description = "Allow all outbound"
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
+      description      = "Allow all outbound"
+      from_port        = 0
+      to_port          = 0
+      protocol         = "-1"
+      cidr_blocks      = ["0.0.0.0/0"]
       ipv6_cidr_blocks = []
-      prefix_list_ids = []
+      prefix_list_ids  = []
+      self             = false
+      security_groups  = []
     }
   ]
 }
@@ -86,25 +89,29 @@ resource "aws_security_group" "alb_service_sg" {
 
   ingress = [
     {
-      description = "Allow HTTP traffic"
-      from_port   = 80
-      to_port     = 80
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
+      description      = "Allow HTTP traffic"
+      from_port        = 80
+      to_port          = 80
+      protocol         = "tcp"
+      cidr_blocks      = ["0.0.0.0/0"]
       ipv6_cidr_blocks = []
-      prefix_list_ids = []
+      prefix_list_ids  = []
+      self             = false
+      security_groups  = []
     }
   ]
 
   egress = [
     {
-      description = "Allow all outbound"
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
+      description      = "Allow all outbound"
+      from_port        = 0
+      to_port          = 0
+      protocol         = "-1"
+      cidr_blocks      = ["0.0.0.0/0"]
       ipv6_cidr_blocks = []
-      prefix_list_ids = []
+      prefix_list_ids  = []
+      self             = false
+      security_groups  = []
     }
   ]
 }
