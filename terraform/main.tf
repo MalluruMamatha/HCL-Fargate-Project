@@ -1,169 +1,107 @@
-# VPC Configuration
-resource "aws_vpc" "main" {
-  cidr_block = "10.0.0.0/16"
-  enable_dns_support = true
-  enable_dns_hostnames = true
-
-  tags = {
-    Name        = "main-vpc"
-    Environment = "dev"
-  }
+# Define provider
+provider "aws" {
+  region = "us-east-1"
 }
 
-# Internet Gateway
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-  tags = {
-    Name = "main-igw"
-  }
+# VPC
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "3.19.0"
+
+  name = "appointment-service-vpc"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["us-east-1a", "us-east-1b"]
+  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnets = ["10.0.3.0/24", "10.0.4.0/24"]
+
+  enable_nat_gateway = true
+  single_nat_gateway = true
 }
 
-# Subnet Configuration (Public)
-resource "aws_subnet" "public_subnet_a" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.1.0/24"
-  availability_zone = "us-east-1a"
-  map_public_ip_on_launch = true
+# IAM Roles for ECS
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecs_task_execution_role"
 
-  tags = {
-    Name = "public-subnet-a"
-    Environment = "dev"
-  }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = { Service = "ecs-tasks.amazonaws.com" }
+      }
+    ]
+  })
 }
 
-resource "aws_subnet" "public_subnet_b" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.2.0/24"
-  availability_zone = "us-east-1b"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "public-subnet-b"
-    Environment = "dev"
-  }
+resource "aws_iam_policy_attachment" "ecs_task_execution_attachment" {
+  name       = "ecs_task_execution_attachment"
+  roles      = [aws_iam_role.ecs_task_execution_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Route Table for Public Subnets
-resource "aws_route_table" "public_route_table" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = {
-    Name = "public-route-table"
-    Environment = "dev"
-  }
+# ECS Cluster
+resource "aws_ecs_cluster" "ecs_cluster" {
+  name = "appointment-service-cluster"
 }
 
-# Route Table Association
-resource "aws_route_table_association" "subnet_a_association" {
-  subnet_id      = aws_subnet.public_subnet_a.id
-  route_table_id = aws_route_table.public_route_table.id
+# ECR Repository
+resource "aws_ecr_repository" "appointment_service" {
+  name = "appointment-service-repo"
+  force_delete = true  # This forces the deletion of the repository and its images
 }
 
-resource "aws_route_table_association" "subnet_b_association" {
-  subnet_id      = aws_subnet.public_subnet_b.id
-  route_table_id = aws_route_table.public_route_table.id
+# Security Group Rule for ALB to ECS
+resource "aws_security_group_rule" "ecs_allow_alb" {
+  type                     = "ingress"
+  from_port                = 3001
+  to_port                  = 3001
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ecs_security_group.id
+  source_security_group_id = aws_security_group.alb_security_group.id
 }
 
-# Security Group for ALB
-resource "aws_security_group" "alb_security_group" {
-  name        = "alb-sg"
-  description = "Allow inbound traffic on port 80"
-  vpc_id      = aws_vpc.main.id
+# Security Groups
+resource "aws_security_group" "ecs_service_sg" {
+  name   = "ecs-service-sg"
+  vpc_id = module.vpc.vpc_id
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "alb-sg"
-    Environment = "dev"
-  }
-}
-
-# Security Group for ECS Tasks
-resource "aws_security_group" "ecs_task_security_group" {
-  name        = "ecs-task-sg"
-  description = "Allow ECS tasks to communicate with ALB"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 3001
-    to_port     = 3001
-    protocol    = "tcp"
-    security_groups = [aws_security_group.alb_security_group.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "ecs-task-sg"
-    Environment = "dev"
-  }
-}
-
-# Load Balancer (ALB)
-resource "aws_lb" "app_lb" {
-  name               = "appointment-service-lb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_security_group.id]
-  subnets            = [aws_subnet.public_subnet_a.id, aws_subnet.public_subnet_b.id]
-  enable_deletion_protection = false
-
-  tags = {
-    Name        = "appointment-service-lb"
-    Environment = "dev"
-  }
-}
-
-# Target Group for ALB
-resource "aws_lb_target_group" "app_target_group" {
-  name        = "appointment-service-target-group"
-  port        = 3001
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip" # Required for Fargate
-
-  health_check {
-    path                = "/health" # Updated to health endpoint
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    matcher             = "200"
-  }
-
-  depends_on = [
-    aws_lb.app_lb
+  ingress = [
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
   ]
 
-  tags = {
-    Name        = "appointment-service-target-group"
-    Environment = "dev"
-  }
+  egress = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
 }
 
-# ALB Listener for HTTP
+# Application Load Balancer
+resource "aws_lb" "app_lb" {
+  name               = "appointment-service-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.ecs_service_sg.id]
+  subnets            = module.vpc.public_subnets
+}
+
+resource "aws_lb_target_group" "app_tg" {
+  name     = "appointment-service-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = module.vpc.vpc_id
+}
+
 resource "aws_lb_listener" "app_listener" {
   load_balancer_arn = aws_lb.app_lb.arn
   port              = 80
@@ -171,191 +109,56 @@ resource "aws_lb_listener" "app_listener" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app_target_group.arn
-  }
-
-  depends_on = [
-    aws_lb.app_lb,
-    aws_lb_target_group.app_target_group
-  ]
-
-  tags = {
-    Name        = "app-listener"
-    Environment = "dev"
+    target_group_arn = aws_lb_target_group.app_tg.arn
   }
 }
 
-# ECS Cluster
-resource "aws_ecs_cluster" "appointment_cluster" {
-  name = "appointment-cluster"
-
-  tags = {
-    Name        = "appointment-cluster"
-    Environment = "dev"
-  }
-}
-
-# ECR Repository
-resource "aws_ecr_repository" "appointment_service_repo" {
-  name = "appointment-service-repo"
-
-  tags = {
-    Name        = "appointment-service-repo"
-    Environment = "dev"
-  }
-}
-
-# IAM Role for ECS Task Execution
-resource "aws_iam_role" "ecs_execution_role" {
-  name = "ecs-execution-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-        Effect   = "Allow"
-      }
-    ]
-  })
-
-  tags = {
-    Name        = "ecs-execution-role"
-    Environment = "dev"
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-  role       = aws_iam_role.ecs_execution_role.name
-}
-
-# IAM Role for ECS Task
-resource "aws_iam_role" "ecs_task_role" {
-  name = "ecs-task-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-        Effect   = "Allow"
-      }
-    ]
-  })
-
-  tags = {
-    Name        = "ecs-task-role"
-    Environment = "dev"
-  }
-}
-
-# ECS Task Definition with ECR Image
-resource "aws_ecs_task_definition" "appointment_task" {
-  family                   = "appointment-task"
-  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
+# ECS Service and Task Definitions
+resource "aws_ecs_task_definition" "app_task" {
+  family                   = "appointment-service-task"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "256"
   memory                   = "512"
+  cpu                      = "256"
 
-  container_definitions = jsonencode([{
-    name      = "appointment-service"
-    image     = "${aws_ecr_repository.appointment_service_repo.repository_url}:latest"
-    essential = true
-    portMappings = [
-      {
-        containerPort = 3001
-        hostPort      = 3001
-        protocol      = "tcp"
-      }
-    ]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        awslogs-group         = "/ecs/appointment-service"
-        # awslogs-region        = data.aws_region.current.name
-        awslogs-stream-prefix = "ecs"
+  container_definitions = jsonencode([
+    {
+      name      = "appointment-service"
+      image     = "${aws_ecr_repository.app_repo.repository_url}:latest"
+      portMappings = [
+        {
+          containerPort = 3001
+          protocol      = "tcp"
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/appointment-service"
+          "awslogs-region"        = "us-east-1"
+          "awslogs-stream-prefix" = "ecs"
+        }
       }
     }
-  }])
-
-  tags = {
-    Name        = "appointment-task"
-    Environment = "dev"
-  }
+  ])
 }
 
-# ECS Service with Load Balancer
-resource "aws_ecs_service" "appointment_service" {
+resource "aws_ecs_service" "app_service" {
   name            = "appointment-service"
-  cluster         = aws_ecs_cluster.appointment_cluster.id
-  task_definition = aws_ecs_task_definition.appointment_task.arn
-  desired_count   = 2
+  cluster         = aws_ecs_cluster.ecs_cluster.arn
+  task_definition = aws_ecs_task_definition.app_task.arn
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.public_subnet_a.id, aws_subnet.public_subnet_b.id]
-    security_groups  = [aws_security_group.ecs_task_security_group.id]
-    assign_public_ip = true
+    subnets         = module.vpc.private_subnets
+    security_groups = [aws_security_group.ecs_service_sg.id]
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.app_target_group.arn
+    target_group_arn = aws_lb_target_group.app_tg.arn
     container_name   = "appointment-service"
     container_port   = 3001
   }
-
-  deployment_controller {
-    type = "ECS"
-  }
-
-  depends_on = [
-    aws_lb_listener.app_listener
-  ]
-
-  tags = {
-    Name        = "appointment-service"
-    Environment = "dev"
-  }
 }
-
-# # Data source for the current AWS region
-# data "aws_region" "current" {}
-
-# # Data source for the current AWS account ID
-# data "aws_caller_identity" "current" {}
-
-# # ECR Repository Policy
-# resource "aws_ecr_repository_policy" "appointment_service_repo_policy" {
-#   repository = aws_ecr_repository.appointment_service_repo.name
-
-#   policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Sid       = "AllowECSPull",
-#         Effect    = "Allow",
-#         Principal = {
-#           Service = "ecs-tasks.amazonaws.com"
-#         },
-#         Action = [
-#           "ecr:GetAuthorizationToken",
-#           "ecr:BatchCheckLayerAvailability",
-#           "ecr:BatchGetImage",
-#           "ecr:GetDownloadUrlForLayer"
-#         ],
-#         Resource = "${aws_ecr_repository.appointment_service_repo.arn}"
-#       }
-#     ]
-#   })
-
-  
-# }
