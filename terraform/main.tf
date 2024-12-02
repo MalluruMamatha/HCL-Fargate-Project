@@ -129,6 +129,21 @@ resource "aws_lb_listener" "app_listener" {
   }
 }
 
+resource "aws_lb_listener_rule" "app_listener_rule" {
+  listener_arn = aws_lb_listener.app_listener.arn
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg.arn # Change this to a different target group if needed
+  }
+
+  condition {
+    field  = "host-header"
+    values = ["example.com"]
+  }
+}
+
+
 # ECS Service and Task Definitions
 resource "aws_ecs_task_definition" "app_task" {
   family                   = "appointment-service-task"
