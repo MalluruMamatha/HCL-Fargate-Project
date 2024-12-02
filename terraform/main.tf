@@ -118,9 +118,7 @@ resource "aws_lb_target_group" "app_tg" {
     unhealthy_threshold = 2
   }
 
-  lifecycle {
-    prevent_destroy = true # Prevent accidental deletion
-  }
+  
 }
 
 resource "aws_lb_listener" "app_listener" {
