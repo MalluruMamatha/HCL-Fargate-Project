@@ -6,7 +6,7 @@ provider "aws" {
 # VPC
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "3.19.0"
+  version = "~> 4.0"
 
   name = "appointment-service-vpc"
   cidr = "10.0.0.0/16"
@@ -48,23 +48,36 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 
 # ECR Repository
 resource "aws_ecr_repository" "appointment_service" {
-  name = "appointment-service-repo"
-  force_delete = true  # This forces the deletion of the repository and its images
-}
-
-# Security Group Rule for ALB to ECS
-resource "aws_security_group_rule" "ecs_allow_alb" {
-  type                     = "ingress"
-  from_port                = 3001
-  to_port                  = 3001
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ecs_service_sg.id
-  source_security_group_id = aws_security_group.alb_service_sg.id
+  name         = "appointment-service-repo"
+  force_delete = true
 }
 
 # Security Groups
 resource "aws_security_group" "ecs_service_sg" {
   name   = "ecs-service-sg"
+  vpc_id = module.vpc.vpc_id
+
+  ingress = [
+    {
+      from_port   = 3001
+      to_port     = 3001
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+
+  egress = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+}
+
+resource "aws_security_group" "alb_service_sg" {
+  name   = "alb-service-sg"
   vpc_id = module.vpc.vpc_id
 
   ingress = [
@@ -125,7 +138,7 @@ resource "aws_ecs_task_definition" "app_task" {
   container_definitions = jsonencode([
     {
       name      = "appointment-service"
-      image     = "${aws_ecr_repository.app_repo.repository_url}:latest"
+      image     = "${aws_ecr_repository.appointment_service.repository_url}:latest"
       portMappings = [
         {
           containerPort = 3001
