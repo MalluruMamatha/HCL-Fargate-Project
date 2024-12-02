@@ -54,66 +54,43 @@ resource "aws_security_group" "ecs_service_sg" {
   name   = "ecs-service-sg"
   vpc_id = module.vpc.vpc_id
 
-  ingress = [
-    {
-      description      = "Allow ALB to ECS"
-      from_port        = 3001
-      to_port          = 3001
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      self             = false
-      security_groups  = []
-    }
-  ]
+  ingress {
+    description = "Allow ALB to ECS"
+    from_port   = 3001
+    to_port     = 3001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  egress = [
-    {
-      description      = "Allow all outbound"
-      from_port        = 0
-      to_port          = 0
-      protocol         = "-1"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      self             = false
-      security_groups  = []
-    }
-  ]
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
+
 
 resource "aws_security_group" "alb_service_sg" {
   name   = "alb-service-sg"
   vpc_id = module.vpc.vpc_id
 
-  ingress = [
-    {
-      description      = "Allow HTTP traffic"
-      from_port        = 80
-      to_port          = 80
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      self             = false
-      security_groups  = []
-    }
-  ]
+  ingress {
+    description = "Allow HTTP traffic"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
-  egress = [
-    {
-      description      = "Allow all outbound"
-      from_port        = 0
-      to_port          = 0
-      protocol         = "-1"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = []
-      prefix_list_ids  = []
-      self             = false
-      security_groups  = []
-    }
-  ]
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 # Application Load Balancer
@@ -130,6 +107,7 @@ resource "aws_lb_target_group" "app_tg" {
   port     = 80
   protocol = "HTTP"
   vpc_id   = module.vpc.vpc_id
+  target_type  = "ip" # Set target type to 'ip' for Fargate compatibility
 }
 
 resource "aws_lb_listener" "app_listener" {
