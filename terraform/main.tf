@@ -107,14 +107,19 @@ resource "aws_lb_target_group" "app_tg" {
   protocol     = "HTTP"
   vpc_id       = module.vpc.vpc_id
   target_type  = "ip" # Set target type to 'ip' for Fargate compatibility
+
   health_check {
-    interval = 30
-    path     = "/health"
-    port     = 80
-    protocol = "HTTP"
-    timeout  = 5
+    interval            = 30
+    path                = "/health"
+    port                = 80
+    protocol            = "HTTP"
+    timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
+  }
+
+  lifecycle {
+    prevent_destroy = true # Prevent accidental deletion
   }
 }
 
@@ -127,22 +132,9 @@ resource "aws_lb_listener" "app_listener" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app_tg.arn
   }
+
+  depends_on = [aws_lb_target_group.app_tg]
 }
-
-resource "aws_lb_listener_rule" "app_listener_rule" {
-  listener_arn = aws_lb_listener.app_listener.arn
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app_tg.arn # Change this to a different target group if needed
-  }
-
-  condition {
-    field  = "host-header"
-    values = ["example.com"]
-  }
-}
-
 
 # ECS Service and Task Definitions
 resource "aws_ecs_task_definition" "app_task" {
@@ -188,4 +180,6 @@ resource "aws_ecs_service" "app_service" {
     container_name   = "appointment-service"
     container_port   = 3001
   }
+
+  depends_on = [aws_lb_listener.app_listener]
 }
